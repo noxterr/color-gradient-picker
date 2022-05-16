@@ -3,8 +3,46 @@
   windows_subsystem = "windows"
 )]
 
+use palette::{Gradient, Srgb, FromColor, Lch};
+
 fn main() {
-  tauri::Builder::default()
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![
+            generate_gradient
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
+
+
+#[tauri::command]
+fn generate_gradient(r: u8, g: u8, b: u8) -> Vec<Vec<u8>> {
+    let my_rgb = Srgb::new(
+        r as f32 / 255.0,
+        g as f32 / 255.0,
+        b as f32 / 255.0,
+    );
+
+    let my_lch: Lch = Lch::from_color(my_rgb.into_linear());
+    let gradient = Gradient::new(vec![
+        Lch::new(0.0, my_lch.chroma, my_lch.hue),
+        my_lch,
+        Lch::new(128.0, my_lch.chroma, my_lch.hue),
+    ]);
+
+    let colors = gradient
+        .take(15) // I get 10 gradients
+        .map(|color| {
+            let (r, g, b) =
+                Srgb::from_color(color).into_components();
+            vec![
+                (r * 255.0) as u8,
+                (g * 255.0) as u8,
+                (b * 255.0) as u8,
+            ]
+        })
+        .collect::<Vec<_>>();
+
+    // This colors here implicitly returns the Vec<Vec<u8>> variable on top
+    colors
 }
